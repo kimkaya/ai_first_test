@@ -145,9 +145,10 @@
 
         // 여러 무료 모델 시도 (fallback)
         const models = [
-            'mistralai/Mixtral-8x7B-Instruct-v0.1',
-            'microsoft/DialoGPT-large',
-            'facebook/blenderbot-400M-distill'
+            'Qwen/Qwen2.5-72B-Instruct:fastest',
+            'meta-llama/Llama-3.3-70B-Instruct:fastest',
+            'mistralai/Mixtral-8x7B-Instruct-v0.1:fastest',
+            'microsoft/Phi-3-mini-4k-instruct:fastest'
         ];
         let currentModelIndex = 0;
 

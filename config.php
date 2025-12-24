@@ -54,10 +54,12 @@ if (empty(HUGGINGFACE_API_KEY) || HUGGINGFACE_API_KEY === 'your_api_key_here') {
 }
 
 // 허용된 모델 목록 (보안을 위해 제한)
+// 새 API는 :fastest, :cheapest 등의 라우팅 옵션을 지원
 define('ALLOWED_CHAT_MODELS', [
-    'mistralai/Mixtral-8x7B-Instruct-v0.1',
-    'microsoft/DialoGPT-large',
-    'facebook/blenderbot-400M-distill'
+    'Qwen/Qwen2.5-72B-Instruct:fastest',
+    'meta-llama/Llama-3.3-70B-Instruct:fastest',
+    'mistralai/Mixtral-8x7B-Instruct-v0.1:fastest',
+    'microsoft/Phi-3-mini-4k-instruct:fastest'
 ]);
 
 define('ALLOWED_IMAGE_MODELS', [

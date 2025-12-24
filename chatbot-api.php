@@ -79,17 +79,20 @@ if (!in_array($model, ALLOWED_CHAT_MODELS)) {
     exit;
 }
 
-// Hugging Face API 호출
-$url = "https://api-inference.huggingface.co/models/" . $model;
+// Hugging Face API 호출 (새로운 OpenAI 호환 형식)
+$url = "https://router.huggingface.co/v1/chat/completions";
 
 $data = [
-    'inputs' => $message,
-    'parameters' => [
-        'max_new_tokens' => 250,
-        'temperature' => 0.7,
-        'top_p' => 0.95,
-        'return_full_text' => false
-    ]
+    'model' => $model,
+    'messages' => [
+        [
+            'role' => 'user',
+            'content' => $message
+        ]
+    ],
+    'max_tokens' => 250,
+    'temperature' => 0.7,
+    'top_p' => 0.95
 ];
 
 // cURL 사용 (더 안정적)
@@ -118,9 +121,26 @@ if (curl_errno($ch)) {
     exit;
 }
 
+curl_close($ch);
+
 // HTTP 응답 코드 확인
 if ($httpCode !== 200) {
     http_response_code($httpCode);
+    echo $result;
+    exit;
 }
 
-echo $result;
+// OpenAI 형식 응답을 구 형식으로 변환
+$response = json_decode($result, true);
+
+if (isset($response['choices'][0]['message']['content'])) {
+    // OpenAI 형식의 응답을 구 Hugging Face 형식으로 변환
+    echo json_encode([
+        [
+            'generated_text' => $response['choices'][0]['message']['content']
+        ]
+    ]);
+} else {
+    // 변환 실패 시 원본 응답 반환
+    echo $result;
+}

@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(php -l:*)",
+      "mcp__ide__getDiagnostics",
+      "Bash(php:*)",
+      "WebSearch"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
