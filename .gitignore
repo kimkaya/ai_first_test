@@ -1,6 +1,9 @@
 # 환경 변수 파일 (중요 정보 포함)
 .env
 
+# Claude Code 설정
+.claude/
+
 # 로그 파일
 *.log
 
