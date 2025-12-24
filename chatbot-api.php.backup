@@ -1,0 +1,113 @@
+<?php
+/**
+ * 챗봇 API 프록시
+ * 클라이언트 요청을 받아 Hugging Face API를 호출합니다
+ */
+
+// CORS 헤더 설정 (로컬 파일에서 접근 허용)
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: POST, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type');
+header('Content-Type: application/json');
+
+// OPTIONS 요청 처리
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    exit(0);
+}
+
+// POST 요청만 허용
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    http_response_code(405);
+    echo json_encode(['error' => 'Method not allowed']);
+    exit;
+}
+
+// 오류 처리 활성화 (개발 중)
+error_reporting(E_ALL);
+ini_set('display_errors', 0); // 브라우저에는 표시 안 함
+
+// config.php 불러오기
+try {
+    define('API_ACCESS', true);
+    require_once 'config.php';
+} catch (Exception $e) {
+    http_response_code(500);
+    echo json_encode([
+        'error' => 'Configuration error',
+        'details' => $e->getMessage()
+    ]);
+    exit;
+}
+
+// 요청 데이터 받기
+$input = json_decode(file_get_contents('php://input'), true);
+
+if (!isset($input['message']) || !isset($input['model'])) {
+    http_response_code(400);
+    echo json_encode(['error' => 'Missing required parameters']);
+    exit;
+}
+
+$message = $input['message'];
+$model = $input['model'];
+
+// 허용된 모델인지 확인
+if (!in_array($model, ALLOWED_CHAT_MODELS)) {
+    http_response_code(400);
+    echo json_encode(['error' => 'Invalid model']);
+    exit;
+}
+
+// Hugging Face API 호출
+$url = "https://api-inference.huggingface.co/models/" . $model;
+
+$data = [
+    'inputs' => $message,
+    'parameters' => [
+        'max_new_tokens' => 250,
+        'temperature' => 0.7,
+        'top_p' => 0.95,
+        'return_full_text' => false
+    ]
+];
+
+$options = [
+    'http' => [
+        'header' => [
+            "Content-Type: application/json",
+            "Authorization: Bearer " . HUGGINGFACE_API_KEY
+        ],
+        'method' => 'POST',
+        'content' => json_encode($data),
+        'timeout' => 30,
+        'ignore_errors' => true
+    ],
+    'ssl' => [
+        'verify_peer' => false,
+        'verify_peer_name' => false
+    ]
+];
+
+$context = stream_context_create($options);
+$result = @file_get_contents($url, false, $context);
+
+if ($result === false) {
+    $error = error_get_last();
+    http_response_code(500);
+    echo json_encode([
+        'error' => 'Failed to connect to AI service',
+        'details' => $error['message'] ?? 'Unknown error'
+    ]);
+    exit;
+}
+
+// HTTP 응답 코드 확인
+$status_line = $http_response_header[0] ?? '';
+preg_match('{HTTP\/\S*\s(\d{3})}', $status_line, $match);
+$status = $match[1] ?? 200;
+
+if ($status != 200) {
+    http_response_code($status);
+}
+
+echo $result;

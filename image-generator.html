@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>무료 AI 이미지 생성기</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        .header h1 {
+            margin-bottom: 10px;
+        }
+        .content {
+            padding: 30px;
+        }
+        .input-section {
+            margin-bottom: 30px;
+        }
+        .prompt-input {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            font-size: 16px;
+            margin-bottom: 15px;
+            resize: vertical;
+            min-height: 100px;
+            font-family: inherit;
+        }
+        .prompt-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        .controls {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 15px;
+        }
+        .model-select {
+            flex: 1;
+            min-width: 200px;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+        .generate-button {
+            padding: 15px 40px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .generate-button:hover {
+            transform: scale(1.05);
+        }
+        .generate-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: scale(1);
+        }
+        .examples {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .example-btn {
+            padding: 8px 15px;
+            background: #e9ecef;
+            border: none;
+            border-radius: 20px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .example-btn:hover {
+            background: #667eea;
+            color: white;
+        }
+        .result-section {
+            margin-top: 30px;
+        }
+        .result-title {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #333;
+        }
+        .image-container {
+            position: relative;
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            min-height: 400px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+        .generated-image {
+            max-width: 100%;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        .loading {
+            text-align: center;
+        }
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .loading-text {
+            color: #667eea;
+            font-size: 16px;
+        }
+        .download-btn {
+            margin-top: 15px;
+            padding: 12px 30px;
+            background: #28a745;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .download-btn:hover {
+            background: #218838;
+            transform: scale(1.05);
+        }
+        .error {
+            color: #dc3545;
+            padding: 15px;
+            background: #f8d7da;
+            border-radius: 8px;
+            margin-top: 15px;
+        }
+        .gallery {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        .gallery-item {
+            position: relative;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .gallery-item:hover {
+            transform: scale(1.05);
+        }
+        .gallery-item img {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+        }
+        .security-notice {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎨 무료 AI 이미지 생성기</h1>
+            <p>안전한 서버 기반 이미지 생성 (API 키 숨김 처리)</p>
+        </div>
+
+        <div class="content">
+            <div class="security-notice">
+                🔒 API 키는 서버에서 안전하게 관리됩니다. HTML 소스코드에 노출되지 않습니다.
+            </div>
+
+            <div class="input-section">
+                <textarea id="promptInput" class="prompt-input"
+                          placeholder="생성하고 싶은 이미지를 설명하세요... (영어로 입력하면 더 좋은 결과가 나옵니다)&#10;예: a beautiful sunset over mountains, photorealistic"></textarea>
+
+                <div class="controls">
+                    <select id="modelSelect" class="model-select">
+                        <option value="stabilityai/stable-diffusion-2-1">Stable Diffusion 2.1 (빠름)</option>
+                        <option value="runwayml/stable-diffusion-v1-5">Stable Diffusion 1.5 (안정적)</option>
+                        <option value="CompVis/stable-diffusion-v1-4">Stable Diffusion 1.4</option>
+                        <option value="stabilityai/stable-diffusion-xl-base-1.0">SDXL 1.0 (고품질, 느림)</option>
+                    </select>
+                    <button class="generate-button" onclick="generateImage()" id="generateBtn">
+                        🎨 이미지 생성
+                    </button>
+                </div>
+
+                <div class="examples">
+                    <button class="example-btn" onclick="useExample('a beautiful sunset over mountains, photorealistic, 4k')">🌅 일몰 풍경</button>
+                    <button class="example-btn" onclick="useExample('a cute cat wearing sunglasses, digital art')">😺 귀여운 고양이</button>
+                    <button class="example-btn" onclick="useExample('a futuristic city with flying cars, cyberpunk style')">🏙️ 미래 도시</button>
+                    <button class="example-btn" onclick="useExample('a magical forest with glowing mushrooms, fantasy art')">🍄 환상의 숲</button>
+                    <button class="example-btn" onclick="useExample('a delicious pizza with lots of cheese, food photography')">🍕 맛있는 음식</button>
+                </div>
+            </div>
+
+            <div class="result-section" id="resultSection" style="display: none;">
+                <div class="result-title">생성된 이미지</div>
+                <div class="image-container" id="imageContainer">
+                    <!-- 이미지가 여기 표시됩니다 -->
+                </div>
+            </div>
+
+            <div id="gallery" class="gallery" style="display: none;">
+                <!-- 생성된 이미지들이 여기 표시됩니다 -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const promptInput = document.getElementById('promptInput');
+        const modelSelect = document.getElementById('modelSelect');
+        const generateBtn = document.getElementById('generateBtn');
+        const resultSection = document.getElementById('resultSection');
+        const imageContainer = document.getElementById('imageContainer');
+        const gallery = document.getElementById('gallery');
+
+        let generatedImages = [];
+
+        function useExample(text) {
+            promptInput.value = text;
+        }
+
+        function showLoading() {
+            imageContainer.innerHTML = `
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <div class="loading-text">이미지 생성 중... (30초~1분 정도 걸릴 수 있습니다)</div>
+                </div>
+            `;
+            resultSection.style.display = 'block';
+        }
+
+        function showError(message) {
+            imageContainer.innerHTML = `<div class="error">❌ ${message}</div>`;
+        }
+
+        function displayImage(imageData) {
+            const img = document.createElement('img');
+            img.src = imageData;
+            img.className = 'generated-image';
+
+            const downloadBtn = document.createElement('button');
+            downloadBtn.className = 'download-btn';
+            downloadBtn.textContent = '💾 이미지 다운로드';
+            downloadBtn.onclick = () => downloadImage(imageData);
+
+            imageContainer.innerHTML = '';
+            imageContainer.appendChild(img);
+            imageContainer.appendChild(downloadBtn);
+
+            // 갤러리에 추가
+            addToGallery(imageData);
+        }
+
+        function addToGallery(imageData) {
+            generatedImages.unshift(imageData);
+
+            const galleryItem = document.createElement('div');
+            galleryItem.className = 'gallery-item';
+            galleryItem.innerHTML = `<img src="${imageData}" alt="Generated">`;
+            galleryItem.onclick = () => {
+                imageContainer.innerHTML = '';
+                const img = document.createElement('img');
+                img.src = imageData;
+                img.className = 'generated-image';
+                const downloadBtn = document.createElement('button');
+                downloadBtn.className = 'download-btn';
+                downloadBtn.textContent = '💾 이미지 다운로드';
+                downloadBtn.onclick = () => downloadImage(imageData);
+                imageContainer.appendChild(img);
+                imageContainer.appendChild(downloadBtn);
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            };
+
+            gallery.style.display = 'grid';
+            gallery.insertBefore(galleryItem, gallery.firstChild);
+        }
+
+        function downloadImage(imageData) {
+            const link = document.createElement('a');
+            link.href = imageData;
+            link.download = `ai-image-${Date.now()}.png`;
+            link.click();
+        }
+
+        async function generateImage() {
+            const prompt = promptInput.value.trim();
+
+            if (!prompt) {
+                alert('이미지 설명을 입력해주세요!');
+                return;
+            }
+
+            generateBtn.disabled = true;
+            showLoading();
+
+            try {
+                const model = modelSelect.value;
+                const response = await fetch('image-api.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        prompt: prompt,
+                        model: model
+                    })
+                });
+
+                if (!response.ok) {
+                    const contentType = response.headers.get('content-type');
+                    if (contentType && contentType.includes('application/json')) {
+                        const error = await response.json();
+                        throw new Error(error.error || `HTTP ${response.status}`);
+                    } else {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                }
+
+                const blob = await response.blob();
+                const imageUrl = URL.createObjectURL(blob);
+                displayImage(imageUrl);
+
+            } catch (error) {
+                console.error('Error:', error);
+                let errorMsg = '이미지 생성 중 오류가 발생했습니다.';
+
+                if (error.message.includes('401') || error.message.includes('403')) {
+                    errorMsg = '서버 인증 오류가 발생했습니다.';
+                } else if (error.message.includes('503')) {
+                    errorMsg = '모델이 로딩 중입니다. 잠시 후 다시 시도해주세요.';
+                } else if (error.message.includes('500')) {
+                    errorMsg = '서버 오류가 발생했습니다. 다른 모델을 선택해보세요.';
+                }
+
+                showError(errorMsg + '<br><br>오류 상세: ' + error.message);
+            } finally {
+                generateBtn.disabled = false;
+            }
+        }
+
+        // 엔터키로 생성 (Ctrl+Enter)
+        promptInput.addEventListener('keydown', (e) => {
+            if (e.ctrlKey && e.key === 'Enter') {
+                generateImage();
+            }
+        });
+    </script>
+</body>
+</html>
