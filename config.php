@@ -69,6 +69,14 @@ define('ALLOWED_IMAGE_MODELS', [
     'stabilityai/stable-diffusion-xl-base-1.0'
 ]);
 
+// 허용된 Vision 모델 목록 (이미지 인식/분석)
+define('ALLOWED_VISION_MODELS', [
+    'Salesforce/blip-image-captioning-base',
+    'nlpconnect/vit-gpt2-image-captioning',
+    'microsoft/resnet-50',
+    'google/vit-base-patch16-224'
+]);
+
 // CORS 설정
 $allowedOrigins = $_ENV['ALLOWED_ORIGINS'] ?? 'http://localhost,http://127.0.0.1,file://';
 define('ALLOWED_ORIGINS', array_map('trim', explode(',', $allowedOrigins)));

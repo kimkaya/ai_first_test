@@ -99,6 +99,79 @@
             cursor: not-allowed;
             transform: scale(1);
         }
+        .camera-button {
+            padding: 12px;
+            background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);
+            color: white;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: transform 0.2s;
+            min-width: 50px;
+        }
+        .camera-button:hover {
+            transform: scale(1.05);
+        }
+        .camera-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        .camera-modal.active {
+            display: flex;
+        }
+        .camera-content {
+            background: white;
+            border-radius: 20px;
+            padding: 20px;
+            max-width: 90%;
+            max-height: 90%;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        .camera-preview {
+            width: 100%;
+            max-width: 640px;
+            border-radius: 10px;
+            background: #000;
+        }
+        .camera-controls {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+        .capture-button {
+            padding: 12px 30px;
+            background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+            color: white;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .close-button {
+            padding: 12px 30px;
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+            color: white;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .captured-image {
+            max-width: 200px;
+            border-radius: 10px;
+            margin-top: 10px;
+        }
         .loading {
             display: inline-block;
             width: 8px;
@@ -134,7 +207,21 @@
             <input type="text" id="messageInput" class="input-field"
                    placeholder="메시지를 입력하세요..."
                    onkeypress="if(event.key === 'Enter') sendMessage()">
+            <button class="camera-button" onclick="openCamera()" id="cameraBtn" title="카메라로 이미지 인식">📷</button>
             <button class="send-button" onclick="sendMessage()" id="sendBtn">전송</button>
+        </div>
+    </div>
+
+    <!-- 카메라 모달 -->
+    <div class="camera-modal" id="cameraModal">
+        <div class="camera-content">
+            <h2 style="text-align: center; color: #333;">카메라 이미지 인식</h2>
+            <video id="cameraPreview" class="camera-preview" autoplay></video>
+            <canvas id="canvas" style="display: none;"></canvas>
+            <div class="camera-controls">
+                <button class="capture-button" onclick="captureImage()">📸 사진 촬영</button>
+                <button class="close-button" onclick="closeCamera()">닫기</button>
+            </div>
         </div>
     </div>
 
@@ -142,6 +229,11 @@
         const chatBox = document.getElementById('chatBox');
         const messageInput = document.getElementById('messageInput');
         const sendBtn = document.getElementById('sendBtn');
+        const cameraModal = document.getElementById('cameraModal');
+        const cameraPreview = document.getElementById('cameraPreview');
+        const canvas = document.getElementById('canvas');
+
+        let cameraStream = null;
 
         // 여러 무료 모델 시도 (fallback)
         const models = [
@@ -151,6 +243,12 @@
             'microsoft/Phi-3-mini-4k-instruct:fastest'
         ];
         let currentModelIndex = 0;
+
+        // Vision 모델 목록
+        const visionModels = [
+            'Salesforce/blip-image-captioning-base',
+            'nlpconnect/vit-gpt2-image-captioning'
+        ];
 
         function addMessage(content, isUser) {
             const messageDiv = document.createElement('div');
@@ -252,6 +350,114 @@
         messageInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') sendMessage();
         });
+
+        // 카메라 열기
+        async function openCamera() {
+            try {
+                cameraStream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: 'environment' }
+                });
+                cameraPreview.srcObject = cameraStream;
+                cameraModal.classList.add('active');
+            } catch (error) {
+                alert('카메라 접근 권한이 필요합니다: ' + error.message);
+                console.error(error);
+            }
+        }
+
+        // 카메라 닫기
+        function closeCamera() {
+            if (cameraStream) {
+                cameraStream.getTracks().forEach(track => track.stop());
+                cameraStream = null;
+            }
+            cameraModal.classList.remove('active');
+        }
+
+        // 사진 촬영 및 인식
+        async function captureImage() {
+            // 캔버스에 현재 비디오 프레임 그리기
+            const context = canvas.getContext('2d');
+            canvas.width = cameraPreview.videoWidth;
+            canvas.height = cameraPreview.videoHeight;
+            context.drawImage(cameraPreview, 0, 0);
+
+            // base64 이미지 데이터 얻기
+            const imageData = canvas.toDataURL('image/jpeg', 0.8);
+
+            // 카메라 닫기
+            closeCamera();
+
+            // 채팅에 이미지 추가
+            addImageMessage(imageData);
+
+            // 이미지 인식 시작
+            sendBtn.disabled = true;
+            showLoading();
+
+            try {
+                const result = await recognizeImage(imageData);
+                removeLoading();
+                addMessage(result, false);
+            } catch (error) {
+                removeLoading();
+                addMessage('❌ 이미지 인식 오류: ' + error.message, false);
+                console.error(error);
+            }
+
+            sendBtn.disabled = false;
+        }
+
+        // 이미지 메시지 추가
+        function addImageMessage(imageData) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message user';
+            messageDiv.innerHTML = `
+                <div class="message-content">
+                    <img src="${imageData}" class="captured-image" alt="Captured">
+                    <br>📷 이미지를 분석 중입니다...
+                </div>
+            `;
+            chatBox.appendChild(messageDiv);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        // 이미지 인식 API 호출
+        async function recognizeImage(imageData) {
+            const model = visionModels[0];
+
+            const response = await fetch('camera-api.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    image: imageData,
+                    model: model
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const result = await response.json();
+
+            if (result.error) {
+                throw new Error(result.error);
+            }
+
+            // 응답 파싱 (모델마다 다를 수 있음)
+            if (Array.isArray(result)) {
+                return '🔍 인식 결과: ' + (result[0].generated_text || JSON.stringify(result[0]));
+            } else if (result.generated_text) {
+                return '🔍 인식 결과: ' + result.generated_text;
+            } else if (result[0] && result[0].generated_text) {
+                return '🔍 인식 결과: ' + result[0].generated_text;
+            }
+
+            return '🔍 인식 결과: ' + JSON.stringify(result);
+        }
     </script>
 </body>
 </html>
